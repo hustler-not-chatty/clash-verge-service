@@ -1,6 +1,59 @@
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "linux")))]
 fn main() {
-    panic!("This program is only intended to run on Windows.");
+    panic!("This program is not intended to run on this platform.");
+}
+
+use anyhow::Error;
+#[cfg(target_os = "linux")]
+fn main() -> Result<(), Error> {
+    const SERVICE_NAME: &str = "clash-verge-service";
+    use std::fs::File;
+    use std::io::Write;
+    use std::path::Path;
+
+    let unit_file = format!("/etc/systemd/system/{}.service", SERVICE_NAME);
+    let unit_file = Path::new(&unit_file);
+
+    let service_binary_path = std::env::current_exe()
+        .unwrap()
+        .with_file_name("clash-verge-service");
+    if !service_binary_path.exists() {
+        eprintln!("The clash-verge-service binary not found.");
+        std::process::exit(2);
+    }
+    let unit_file_content = format!(
+        "[Unit]
+Description=Clash Verge Service helps to launch Clash Core.
+After=network-online.target nftables.service iptables.service
+
+[Service]
+Type=simple
+ExecStart={}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+",
+        service_binary_path.to_str().unwrap()
+    );
+    let mut file = File::create(unit_file).expect("Failed to create file for writing.");
+    file.write_all(unit_file_content.as_bytes())
+        .expect("Unable to write unit files");
+
+    // Reload unit files.
+    std::process::Command::new("systemctl")
+        .arg("daemon-reload")
+        .output()
+        .and_then(|_| {
+            std::process::Command::new("systemctl")
+                .arg("enable")
+                .arg(SERVICE_NAME)
+                .arg("--now")
+                .output()
+        })
+        .expect("Failed to start service.");
+    Ok(())
 }
 
 /// install and start the service
