@@ -10,52 +10,25 @@ fn main() -> Result<(), Error> {
 
     const SERVICE_NAME: &str = "clash-verge-service";
 
-    // Stop the service
+    // Disable the service
     std::process::Command::new("systemctl")
-        .arg("stop")
+        .arg("disable")
         .arg(SERVICE_NAME)
+        .arg("--now")
         .output()
-        .expect("Failed to stop service.");
+        .expect("Failed to disable service.");
 
     // Remove the unit file.
     let unit_file = format!("/etc/systemd/system/{}.service", SERVICE_NAME);
     let unit_file = Path::new(&unit_file);
     if unit_file.exists() {
-        remove_file(unit_file).expect("Failed to remove this file.");
+        remove_file(unit_file).expect("Failed to remove unit file.");
     }
 
     std::process::Command::new("systemctl")
         .arg("daemon-reload")
         .output()
-        .expect("Failed to reload systemd daemons.");
-    Ok(())
-}
-
-use anyhow::Error;
-#[cfg(target_os = "linux")]
-fn main() -> Result<(), Error> {
-    use std::{fs::remove_file, path::Path};
-
-    const SERVICE_NAME: &str = "clash-verge-service";
-
-    // Stop the service
-    std::process::Command::new("systemctl")
-        .arg("stop")
-        .arg(SERVICE_NAME)
-        .output()
-        .expect("Failed to stop service.");
-
-    // Remove the unit file.
-    let unit_file = format!("/etc/systemd/system/{}.service", SERVICE_NAME);
-    let unit_file = Path::new(&unit_file);
-    if unit_file.exists() {
-        remove_file(unit_file).expect("Failed to remove this file.");
-    }
-
-    std::process::Command::new("systemctl")
-        .arg("daemon-reload")
-        .output()
-        .expect("Failed to reload systemd daemons.");
+        .expect("Failed to reload systemd daemon.");
     Ok(())
 }
 
